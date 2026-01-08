@@ -1,0 +1,2 @@
+fauxlogger @ git+https://github.com/codefaux/python-fauxlogger@main
+requests

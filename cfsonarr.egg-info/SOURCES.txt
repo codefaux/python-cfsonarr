@@ -1,0 +1,7 @@
+pyproject.toml
+cfsonarr/__init__.py
+cfsonarr/cfsonarr.py
+cfsonarr.egg-info/PKG-INFO
+cfsonarr.egg-info/SOURCES.txt
+cfsonarr.egg-info/dependency_links.txt
+cfsonarr.egg-info/top_level.txt
