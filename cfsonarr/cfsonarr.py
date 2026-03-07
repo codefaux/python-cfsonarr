@@ -8,10 +8,12 @@ import requests
 SONARR_URL = os.getenv("SONARR_URL") or "http://localhost:8989"
 API_KEY = os.getenv("SONARR_API") or "DEADBEEF1E5"
 
-HEADERS = {"X-Api-Key": API_KEY}
+
+def _header(api_key: str) -> dict[str, str]:
+    return dict({"X-Api-Key": api_key})
 
 
-def validate_sonarr_config() -> bool:
+def validate_sonarr_config(_url: str = SONARR_URL, _key: str = API_KEY) -> bool:
     """
     Validates the Sonarr URL and API key by checking the /api/v3/health endpoint.
 
@@ -22,13 +24,23 @@ def validate_sonarr_config() -> bool:
     Returns:
         bool: True if configuration is valid, False otherwise.
     """
+    global SONARR_URL, API_KEY
 
     try:
+
         response = requests.get(
-            f"{SONARR_URL.rstrip('/')}/api/v3/health", headers=HEADERS, timeout=10
+            f"{_url.rstrip('/')}/api/v3/health",
+            headers=_header(_key),
+            timeout=10,
         )
         if response.status_code == 200:
             _log.msg("Sonarr configuration is valid.")
+
+            if SONARR_URL != _url or API_KEY != _key:
+                _log.msg("Replaced URL/API key.")
+                SONARR_URL = _url
+                API_KEY = _key
+
             return True
         else:
             _log.msg(
@@ -57,7 +69,9 @@ def refresh_series(series_id: int) -> dict:
 
     try:
         response = requests.post(
-            f"{SONARR_URL.rstrip('/')}/api/v3/command", headers=HEADERS, json=payload
+            f"{SONARR_URL.rstrip('/')}/api/v3/command",
+            headers=_header(API_KEY),
+            json=payload,
         )
         response.raise_for_status()
         return response.json()
@@ -68,7 +82,9 @@ def refresh_series(series_id: int) -> dict:
 
 def get_all_series() -> list[tuple[str, int]]:
     """Returns a list of registered show titles from Sonarr."""
-    response = requests.get(f"{SONARR_URL.rstrip('/')}/api/v3/series", headers=HEADERS)
+    response = requests.get(
+        f"{SONARR_URL.rstrip('/')}/api/v3/series", headers=_header(API_KEY)
+    )
     response.raise_for_status()
     series_list = response.json()
     return [(s["title"], s["id"]) for s in series_list]
@@ -76,7 +92,9 @@ def get_all_series() -> list[tuple[str, int]]:
 
 def get_monitored_series() -> list:
     """Returns a list of monitored show titles from Sonarr."""
-    response = requests.get(f"{SONARR_URL.rstrip('/')}/api/v3/series", headers=HEADERS)
+    response = requests.get(
+        f"{SONARR_URL.rstrip('/')}/api/v3/series", headers=_header(API_KEY)
+    )
     response.raise_for_status()
     series_list = response.json()
     return [s["title"] for s in series_list if s.get("monitored", False)]
@@ -84,7 +102,9 @@ def get_monitored_series() -> list:
 
 def is_monitored_series(series_id: int) -> bool:
     """Returns if a series_id from Sonarr is monitored."""
-    response = requests.get(f"{SONARR_URL.rstrip('/')}/api/v3/series", headers=HEADERS)
+    response = requests.get(
+        f"{SONARR_URL.rstrip('/')}/api/v3/series", headers=_header(API_KEY)
+    )
     response.raise_for_status()
     series_list = response.json()
     return any(s["id"] == series_id and s.get("monitored", True) for s in series_list)
@@ -92,7 +112,7 @@ def is_monitored_series(series_id: int) -> bool:
 
 def search_local_series(query: str) -> list[dict]:
     """Search for a show by title from locally added series only."""
-    response = requests.get(f"{SONARR_URL}/api/v3/series", headers=HEADERS)
+    response = requests.get(f"{SONARR_URL}/api/v3/series", headers=_header(API_KEY))
     response.raise_for_status()
     series_list = response.json()
 
@@ -103,7 +123,9 @@ def search_local_series(query: str) -> list[dict]:
 def search_series(query: str) -> list[dict]:
     """Search for a show by title and return results."""
     response = requests.get(
-        f"{SONARR_URL}/api/v3/series/lookup", params={"term": query}, headers=HEADERS
+        f"{SONARR_URL}/api/v3/series/lookup",
+        params={"term": query},
+        headers=_header(API_KEY),
     )
     response.raise_for_status()
     return response.json()
@@ -112,7 +134,9 @@ def search_series(query: str) -> list[dict]:
 def get_episodes(series_id: int) -> list[dict]:
     """Retrieve episodes for a given series ID."""
     response = requests.get(
-        f"{SONARR_URL}/api/v3/episode", params={"seriesId": series_id}, headers=HEADERS
+        f"{SONARR_URL}/api/v3/episode",
+        params={"seriesId": series_id},
+        headers=_header(API_KEY),
     )
     response.raise_for_status()
     return response.json()
@@ -162,7 +186,7 @@ def get_file_quality_and_language(file_path: str) -> tuple[dict, dict]:
         file_path (str): Full path to the file to match.
 
     Returns:
-        dict: A dictionary with 'quality' and 'languages' keys from the matched file info.
+        tuple: A tuple with 'quality' and 'languages' dicts from the matched file info.
 
     Raises:
         ValueError: If no matching file is found in the manual import results.
@@ -172,7 +196,7 @@ def get_file_quality_and_language(file_path: str) -> tuple[dict, dict]:
     response = requests.get(
         f"{SONARR_URL.rstrip('/')}/api/v3/manualimport",
         params={"folder": folder, "filterExistingFiles": "false"},
-        headers=HEADERS,
+        headers=_header(API_KEY),
     )
     response.raise_for_status()
     files = response.json()
@@ -226,12 +250,12 @@ def import_downloaded_episode(
     Uses Sonarr's ManualImport API to import a downloaded episode.
 
     Parameters:
-        show_title (str): Title of the series (must already exist in Sonarr).
-        season_number (int): Season number.
-        episode_number (int): Episode number.
-        file_path (str): Full path to the downloaded video file.
-        download_folder (str): Parent folder containing the downloaded file.
-                               If not provided, it will be inferred from file_path.
+        series_id (int): ID of the series (must be matched from Sonarr data)
+        season_number (int): Season number
+        episode_number (int): Episode number
+        file_name (str): File name of the downloaded video file
+        sonarr_folder (str): Folder containing the downloaded file.
+                        If not provided, it will be inferred from file_path.
     """
 
     if not sonarr_folder:
@@ -265,7 +289,9 @@ def import_downloaded_episode(
     }
 
     response = requests.post(
-        f"{SONARR_URL.rstrip('/')}/api/v3/command", headers=HEADERS, json=payload
+        f"{SONARR_URL.rstrip('/')}/api/v3/command",
+        headers=_header(API_KEY),
+        json=payload,
     )
     response.raise_for_status()
     return response.json()
