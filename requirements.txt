@@ -4,7 +4,7 @@ certifi==2026.1.4
     # via requests
 charset-normalizer==3.4.4
     # via requests
-fauxlogger @ git+https://github.com/codefaux/python-fauxlogger@d97989e7c632328fcc881aaf41fc01d812edbc88
+fauxlogger @ git+https://github.com/codefaux/python-fauxlogger
     # via -r requirements.in
 idna==3.11
     # via requests
