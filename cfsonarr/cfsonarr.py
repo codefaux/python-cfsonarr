@@ -2,7 +2,6 @@
 
 import os
 
-import fauxlogger as _log
 import requests
 
 SONARR_URL = os.getenv("SONARR_URL") or "http://localhost:8989"
@@ -34,21 +33,15 @@ def validate_sonarr_config(_url: str = SONARR_URL, _key: str = API_KEY) -> bool:
             timeout=10,
         )
         if response.status_code == 200:
-            _log.msg("Sonarr configuration is valid.")
-
             if SONARR_URL != _url or API_KEY != _key:
-                _log.msg("Replaced URL/API key.")
                 SONARR_URL = _url
                 API_KEY = _key
 
             return True
         else:
-            _log.msg(
-                f"Unexpected response status: {response.status_code}. Check URL and API key."
-            )
             return False
     except requests.exceptions.RequestException as e:
-        _log.msg(f"Failed to connect to Sonarr: {e}")
+        print(f"Failed to connect to Sonarr: {e}")
         return False
 
 
@@ -76,7 +69,7 @@ def refresh_series(series_id: int) -> dict:
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        _log.msg(f"Failed to refresh series {series_id}: {e}")
+        print(f"Failed to refresh series {series_id}: {e}")
         raise
 
 
@@ -158,7 +151,7 @@ def get_episode_data_for_shows(
         try:
             episodes = get_episodes(show_id)
         except Exception as e:
-            _log.msg(f"Error fetching episodes for '{show_id}':\n\t{e}")
+            print(f"Error fetching episodes for '{show_id}':\n\t{e}")
             continue
 
         for ep in episodes:
